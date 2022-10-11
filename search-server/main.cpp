@@ -49,6 +49,8 @@ struct Document {
     double relevance;
 };
 
+
+
 class SearchServer {
 public:
     void SetStopWords(const string& text) {
@@ -56,13 +58,13 @@ public:
             stop_words_.insert(word);
         }
     }
-
+    
+    // после исправлений здесь не проходит проверку по скорости
     void AddDocument(int document_id, const string& document) {
         const vector<string> words = SplitIntoWordsNoStop(document);
-        double TF;
+        const double inv_words_size = 1.0 / words.size();
         for (const string& word : words) {
-            TF = double(count(words.begin(), words.end(), word)) / words.size();
-            word_to_documents_freqs_[word][document_id] = TF;
+            word_to_documents_freqs_[word][document_id] += inv_words_size;
         }
         ++document_count_;
     }
@@ -97,6 +99,10 @@ private:
         return stop_words_.count(word) > 0;
     }
 
+    double CalcIDF(const string& word) const {
+        return log(1.0 * document_count_ / word_to_documents_freqs_.at(word).size());
+    }
+
     vector<string> SplitIntoWordsNoStop(const string& text) const {
         vector<string> words;
         for (const string& word : SplitIntoWords(text)) {
@@ -125,14 +131,10 @@ private:
     vector<Document> FindAllDocuments(const Query& query_words) const {
         vector<Document> matched_documents;
         map<int, double> document_to_relevance;
-        double IDF;
-        double IDF_TF;
         for (const auto& plus_words : query_words.plus_words) {
             if (word_to_documents_freqs_.count(plus_words)) {
-                IDF = log(double(document_count_) / word_to_documents_freqs_.at(plus_words).size());
                 for (const auto& [ID, TF] : word_to_documents_freqs_.at(plus_words)) {
-                    IDF_TF = IDF * TF;
-                    document_to_relevance[ID] += IDF_TF;    
+                    document_to_relevance[ID] += CalcIDF(plus_words) * TF;    
                 }
             }
         }
