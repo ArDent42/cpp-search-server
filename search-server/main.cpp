@@ -6,6 +6,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <optional>
 
 using namespace std;
 
@@ -78,21 +79,17 @@ public:
 	template<typename StringContainer>
 	explicit SearchServer(const StringContainer &stop_words) :
 			stop_words_(MakeUniqueNonEmptyStrings(stop_words)) {
-		for (const auto &stop_word : stop_words) {
-			if (!IsValidWord(stop_word)) {
-				throw invalid_argument("Stop words contains invalid symbols"s);
-			}
+		if (!all_of(stop_words.begin(), stop_words.end(),
+				[](const auto &stop_word) {
+					return IsValidWord(stop_word);
+				})) {
+			throw invalid_argument("Stop words contains invalid symbols"s);
 		}
 	}
 
 	explicit SearchServer(const string &stop_words_text) :
 			SearchServer(SplitIntoWords(stop_words_text)) // Invoke delegating constructor from string container
 	{
-		for (const auto &stop_word : stop_words_) {
-			if (!IsValidWord(stop_word)) {
-				throw invalid_argument("Stop words contains invalid symbols"s);
-			}
-		}
 	}
 
 	void AddDocument(int document_id, const string &document,
@@ -104,7 +101,7 @@ public:
 		} else if (documents_.count(document_id)) {
 			throw invalid_argument("Document ID already exists"s);
 		}
-		ids_.push_back(document_id);
+		index_ID_.push_back(document_id);
 		const vector<string> words = SplitIntoWordsNoStop(document);
 		const double inv_word_count = 1.0 / words.size();
 		for (const string &word : words) {
@@ -117,18 +114,7 @@ public:
 	template<typename DocumentPredicate>
 	vector<Document> FindTopDocuments(const string &raw_query,
 			DocumentPredicate document_predicate) const {
-		if (!IsValidWord(raw_query)) {
-			throw invalid_argument("Query contains invalid symbols"s);
-		}
 		const Query query = ParseQuery(raw_query);
-		for (const string &minus_word : query.minus_words) {
-			if (minus_word[0] == '-') {
-				throw invalid_argument(
-						"More than one minus symbol before minus word"s);
-			} else if (minus_word.empty()) {
-				throw invalid_argument("No word after minus symbol"s);
-			}
-		}
 		auto matched_documents = FindAllDocuments(query, document_predicate);
 		sort(matched_documents.begin(), matched_documents.end(),
 				[](const Document &lhs, const Document &rhs) {
@@ -163,15 +149,7 @@ public:
 
 	tuple<vector<string>, DocumentStatus> MatchDocument(const string &raw_query,
 			int document_id) const {
-		if (!IsValidWord(raw_query)) {
-			throw invalid_argument("Invalid symbols in query"s);
-		}
 		const Query query = ParseQuery(raw_query);
-		for (const string &minus_word : query.minus_words) {
-			if (minus_word[0] == '-' || minus_word.empty()) {
-				throw invalid_argument("Invalid minus words"s);
-			}
-		}
 		vector<string> matched_words;
 		for (const string &word : query.plus_words) {
 			if (word_to_document_freqs_.count(word) == 0) {
@@ -194,7 +172,7 @@ public:
 	}
 
 	int GetDocumentId(int index) const {
-		return ids_.at(index);
+		return index_ID_.at(index);
 	}
 
 private:
@@ -205,7 +183,7 @@ private:
 	const set<string> stop_words_;
 	map<string, map<int, double>> word_to_document_freqs_;
 	map<int, DocumentData> documents_;
-	vector<int> ids_;
+	vector<int> index_ID_;
 
 	bool IsStopWord(const string &word) const {
 		return stop_words_.count(word) > 0;
@@ -246,7 +224,7 @@ private:
 
 	QueryWord ParseQueryWord(string text) const {
 		bool is_minus = false;
-		// Word shouldn't be empty
+// Word shouldn't be empty
 		if (text[0] == '-') {
 			is_minus = true;
 			text = text.substr(1);
@@ -260,6 +238,9 @@ private:
 	};
 
 	Query ParseQuery(const string &text) const {
+		if (!IsValidWord(text)) {
+			throw invalid_argument("Query contains invalid symbols"s);
+		}
 		Query query;
 		for (const string &word : SplitIntoWords(text)) {
 			const QueryWord query_word = ParseQueryWord(word);
@@ -271,10 +252,18 @@ private:
 				}
 			}
 		}
+		for (const string &minus_word : query.minus_words) {
+			if (minus_word[0] == '-') {
+				throw invalid_argument(
+						"More than one minus symbol before minus word"s);
+			} else if (minus_word.empty()) {
+				throw invalid_argument("No word after minus symbol"s);
+			}
+		}
 		return query;
 	}
 
-	// Existence required
+// Existence required
 	double ComputeWordInverseDocumentFreq(const string &word) const {
 		return log(
 				GetDocumentCount() * 1.0
