@@ -16,8 +16,8 @@ public:
 
 private:
 	struct QueryResult {
-		std::string raw_query;
-		std::vector<Document> result;
+		std::string raw_query_;
+		bool empty_result;
 	};
 	std::deque<QueryResult> requests_;
 	const static int min_in_day_ = 1440;
@@ -27,19 +27,21 @@ private:
 
 template<typename DocumentPredicate>
 std::vector<Document> RequestQueue::AddFindRequest(const std::string &raw_query, DocumentPredicate document_predicate) {
-		std::vector<Document> results;
-		results = search_server_.FindTopDocuments(raw_query, document_predicate);
-		requests_.push_back( { raw_query, results });
-		if (results.empty()) {
-			++empty_requests_;
-		}
-		if (requests_.size() > min_in_day_) {
-			if (requests_.front().result.empty()) {
-				--empty_requests_;
-				requests_.pop_front();
-			} else {
-				requests_.pop_front();
-			}
-		}
-		return results;
+	std::vector<Document> results;
+	results = search_server_.FindTopDocuments(raw_query, document_predicate);
+	if (results.empty()) {
+		requests_.push_back( { raw_query, 1 });
+		++empty_requests_;
+	} else {
+		requests_.push_back( { raw_query, 0 });
 	}
+	if (requests_.size() > min_in_day_) {
+		if (requests_.front().empty_result) {
+			--empty_requests_;
+			requests_.pop_front();
+		} else {
+			requests_.pop_front();
+		}
+	}
+	return results;
+}
