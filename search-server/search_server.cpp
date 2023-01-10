@@ -42,7 +42,7 @@ const std::map<std::string, double>& SearchServer::GetWordFrequencies(int docume
 
 void SearchServer::RemoveDocument(int document_id) {
 	auto words_to_del = GetWordFrequencies(document_id);
-	for (const auto& word : words_to_del) {
+	for (const auto &word : words_to_del) {
 		word_to_document_freqs_.at(word.first).erase(document_id);
 	}
 	documents_.erase(document_id);
@@ -64,10 +64,6 @@ std::vector<Document> SearchServer::FindTopDocuments(const std::string &raw_quer
 int SearchServer::GetDocumentCount() const {
 	return documents_.size();
 }
-
-//int SearchServer::GetDocumentId(int index) const {
-//	return document_ids_.at(index);
-//}
 
 std::tuple<std::vector<std::string>, DocumentStatus> SearchServer::MatchDocument(const std::string &raw_query,
 		int document_id) const {

@@ -23,33 +23,43 @@ public:
 
 	auto begin() const {return document_ids_.begin();};
 	auto end() const {return document_ids_.end();};
+
 	const std::map<std::string, double>& GetWordFrequencies(int document_id) const;
+
 	void RemoveDocument(int document_id);
+
 	template<typename DocumentPredicate>
 	std::vector<Document> FindTopDocuments(const std::string &raw_query,
 			DocumentPredicate document_predicate) const;
+
 	std::vector<Document> FindTopDocuments(const std::string &raw_query, DocumentStatus status) const;
+
 	std::vector<Document> FindTopDocuments(const std::string &raw_query) const;
+
 	int GetDocumentCount() const;
+
 	int GetDocumentId(int index) const;
+
 	std::tuple<std::vector<std::string>, DocumentStatus> MatchDocument(const std::string &raw_query,
 			int document_id) const;
-
 
 private:
 	struct DocumentData {
 		int rating;
 		DocumentStatus status;
 	};
+
 	struct QueryWord {
 		std::string data;
 		bool is_minus;
 		bool is_stop;
 	};
+
 	struct Query {
 		std::set<std::string> plus_words;
 		std::set<std::string> minus_words;
 	};
+
 	const std::set<std::string> stop_words_;
 	std::map<std::string, std::map<int, double>> word_to_document_freqs_;
 	std::map<int, DocumentData> documents_;
