@@ -8,10 +8,10 @@ void RemoveDuplicates(SearchServer &search_server) {
 	std::set<std::set<std::string>> dupl;
 	std::set<int> id_to_delete;
 	for (int id : search_server) {
-		std::map<std::string, double> found_words = search_server.GetWordFrequencies(id);
+		std::map<std::string_view, double> found_words = search_server.GetWordFrequencies(id);
 		std::set<std::string> words;
 		for (const auto &word : found_words) {
-			words.insert(word.first);
+			words.insert(std::string(word.first));
 		}
 		if (dupl.count(words)) {
 			id_to_delete.insert(id);
