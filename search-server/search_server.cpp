@@ -63,7 +63,7 @@ void SearchServer::RemoveDocument(int document_id) {
 
 std::vector<Document> SearchServer::FindTopDocuments(
 		std::string_view raw_query, DocumentStatus status) const {
-	return FindTopDocuments(raw_query,
+	return FindTopDocuments(std::execution::seq, raw_query,
 			[status](int document_id, DocumentStatus document_status,
 					int rating) {
 				return document_status == status;
@@ -72,7 +72,7 @@ std::vector<Document> SearchServer::FindTopDocuments(
 
 std::vector<Document> SearchServer::FindTopDocuments(
 		std::string_view raw_query) const {
-	return FindTopDocuments(raw_query, DocumentStatus::ACTUAL);
+	return FindTopDocuments(std::execution::seq, raw_query, DocumentStatus::ACTUAL);
 }
 
 int SearchServer::GetDocumentCount() const {
@@ -138,10 +138,7 @@ int SearchServer::ComputeAverageRating(const std::vector<int> &ratings) {
 	if (ratings.empty()) {
 		return 0;
 	}
-	int rating_sum = 0;
-	for (const int rating : ratings) {
-		rating_sum += rating;
-	}
+	int rating_sum = std::accumulate(ratings.begin(), ratings.end(), 0);
 	return rating_sum / static_cast<int>(ratings.size());
 }
 SearchServer::QueryWord SearchServer::ParseQueryWord(
@@ -192,3 +189,5 @@ double SearchServer::ComputeWordInverseDocumentFreq(
 	return log(
 			GetDocumentCount() * 1.0 / word_to_document_freqs_.at(std::string(word)).size());
 }
+
+
